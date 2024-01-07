@@ -1,0 +1,20 @@
+service:
+  name: aws-sms-service
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  region: us-east-1
+
+functions:
+  sendSms:
+    handler: dist/functions/sendSms.handler
+    events:
+      - sns: arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:MySNSTopic
+
+resources:
+  Resources:
+    MySNSTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        DisplayName: "MySNSTopic"
