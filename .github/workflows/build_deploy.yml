@@ -17,7 +17,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 14
+          node-version: 16
           cache: 'yarn' # Use yarn caching
 
       - name: Install Dependencies
@@ -27,6 +27,7 @@ jobs:
         run: yarn test
 
   deploy:
+    if: false # Disable deployment for now
     needs: build-and-test
     runs-on: ubuntu-latest
     steps:
@@ -36,7 +37,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 14
+          node-version: 16
           cache: 'yarn' # Use yarn caching
 
       - name: Install Dependencies
