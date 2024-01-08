@@ -1,6 +1,10 @@
 import { smsController } from '../controllers/smsController';
 
-export const handler = async (event: any): Promise<any> => {
+type IEvent = {
+    body: string;
+};
+
+export const handler = async (event: IEvent): Promise<any> => {
     try {
         const body = JSON.parse(event.body || '{}');
         const result = await smsController.sendSms(body.phoneNumber, body.message);

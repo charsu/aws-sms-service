@@ -1,7 +1,7 @@
 import { smsController } from './smsController';
-import { snsService } from '../services/snsService';
+import { sqsService } from '../services/sqsService';
 
-jest.mock('../services/snsService');
+jest.mock('../services/sqsService');
 
 
 describe('smsController', () => {
@@ -9,28 +9,28 @@ describe('smsController', () => {
         jest.resetAllMocks();
     });
 
+    const payload = {
+        message: 'Hello, World!',
+        phoneNumber: '+1234567890',
+    };
+
     it('should send SMS successfully', async () => {
-        const phoneNumber = '+1234567890';
-        const message = 'Hello, World!';
 
         // Mock the implementation of publishMessage in snsService
-        (snsService.publishMessage as jest.Mock).mockResolvedValueOnce("");
+        (sqsService.publishMessage as jest.Mock).mockResolvedValueOnce("");
 
-        const result = await smsController.sendSms(phoneNumber, message);
+        const result = await smsController.sendSms(payload.phoneNumber, payload.message);
 
-        expect(snsService.publishMessage).toHaveBeenCalledWith(phoneNumber, message);
+        expect(sqsService.publishMessage).toHaveBeenCalledWith(payload);
         expect(result).toBe('SMS request sent successfully');
     });
 
     it('should handle errors when sending SMS', async () => {
-        const phoneNumber = '+1234567890';
-        const message = 'Hello, World!';
-
         // Mock the implementation of publishMessage in snsService to throw an error
-        (snsService.publishMessage as jest.Mock).mockRejectedValueOnce(new Error('Failed to send SMS'));
+        (sqsService.publishMessage as jest.Mock).mockRejectedValueOnce(new Error('Failed to send SMS'));
 
-        await expect(smsController.sendSms(phoneNumber, message)).rejects.toThrow('Failed to send SMS');
+        await expect(smsController.sendSms(payload.phoneNumber, payload.message)).rejects.toThrow('Failed to send SMS');
 
-        expect(snsService.publishMessage).toHaveBeenCalledWith(phoneNumber, message);
+        expect(sqsService.publishMessage).toHaveBeenCalledWith(payload);
     });
 });

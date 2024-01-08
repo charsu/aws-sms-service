@@ -1,8 +1,9 @@
 import { SNS } from 'aws-sdk';
 import { PublishInput } from 'aws-sdk/clients/sns';
+import { IService, ISmsPayload } from '../models';
 
-export const snsService = {
-    publishMessage: async (phoneNumber: string, message: string): Promise<void> => {
+export const snsService: IService = {
+    publishMessage: async ({ message, phoneNumber }: ISmsPayload): Promise<void> => {
         const sns = new SNS();
 
         const params = {

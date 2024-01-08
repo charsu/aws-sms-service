@@ -1,46 +1,58 @@
 import { snsService } from './snsService';
-import { SNS } from 'aws-sdk';
+import { PublishInput } from 'aws-sdk/clients/sns';
+import { ISmsPayload } from '../models';
 
-jest.mock('aws-sdk');
+// Mocking the SNS class
+const mockPublish = jest.fn(() => ({ promise: jest.fn() }));
+jest.mock('aws-sdk', () => {
+    return {
+        SNS: jest.fn(() => ({
+            publish: mockPublish,
+        })),
+    };
+});
 
-xdescribe('snsService', () => {
-    afterEach(() => {
-        jest.restoreAllMocks();
+
+describe('snsService', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
     });
 
-    it('should publish a message to SNS successfully', async () => {
-        const mockPublishPromise = jest.fn().mockResolvedValueOnce({ MessageId: 'mockedMessageId' });
-        const mockPublish = jest.fn().mockImplementationOnce(async() => (mockPublishPromise));
-        (SNS.prototype.publish as jest.Mock).mockImplementationOnce(mockPublish);
+    const mockPhoneNumber = '+1234567890';
+    const mockMessage = 'Hello, world!';
 
-        const phoneNumber = '+1234567890';
-        const message = 'Hello, World!';
+    const smsPayload: ISmsPayload = {
+        phoneNumber: mockPhoneNumber,
+        message: mockMessage,
+    };
 
-        await snsService.publishMessage(phoneNumber, message);
+    it('should publish an SMS message to SNS', async () => {
+        await snsService.publishMessage(smsPayload);
 
-        expect(SNS.prototype.publish).toHaveBeenCalledWith({
-            Message: message,
-            PhoneNumber: phoneNumber,
-        });
+        // Verify that the SNS.publish method was called with the correct parameters
+        const expectedParams: PublishInput = {
+            Message: mockMessage,
+            PhoneNumber: mockPhoneNumber,
+        };
+        expect(mockPublish).toHaveBeenCalledWith(expectedParams);
 
-        expect(mockPublishPromise).toHaveBeenCalled();
+        // Verify that the SNS.publish method was called once
+        expect(mockPublish).toHaveBeenCalledTimes(1);
     });
 
-    it('should handle errors when publishing a message to SNS', async () => {
-        const mockPublishPromise = jest.fn().mockRejectedValueOnce(new Error('Failed to publish message'));
-        const mockPublish = jest.fn().mockImplementationOnce(() => ({ promise: mockPublishPromise }));
-        (SNS.prototype.publish as jest.Mock).mockImplementationOnce(mockPublish);
+    it('should handle an error during SNS publish', async () => {
+        mockPublish.mockImplementationOnce(() => { throw new Error('Mocked SNS publish error') });
 
-        const phoneNumber = '+1234567890';
-        const message = 'Hello, World!';
+        await expect(snsService.publishMessage(smsPayload)).rejects.toThrowError('Mocked SNS publish error');
 
-        await expect(snsService.publishMessage(phoneNumber, message)).rejects.toThrow('Failed to publish message');
+        // Verify that the SNS.publish method was called with the correct parameters
+        const expectedParams: PublishInput = {
+            Message: mockMessage,
+            PhoneNumber: mockPhoneNumber,
+        };
+        expect(mockPublish).toHaveBeenCalledWith(expectedParams);
 
-        expect(SNS.prototype.publish).toHaveBeenCalledWith({
-            Message: message,
-            PhoneNumber: phoneNumber,
-        });
-
-        expect(mockPublishPromise).toHaveBeenCalled();
+        // Verify that the SNS.publish method was called once
+        expect(mockPublish).toHaveBeenCalledTimes(1);
     });
 });
