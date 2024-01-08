@@ -1,20 +1,68 @@
-service:
-  name: aws-sms-service
+service: aws-sms-service
+
+custom:
+  webpack:
+    webpackConfig: "webpack.config.js" # Name of webpack configuration file
+    includeModules: false # Node modules configuration for packaging
+    packager: "yarn" # Packager that will be used to package your external modules
+    excludeFiles: src/**/*.spec.js # Provide a glob for files to ignore
+  customRegion: &region eu-west-1
+  queueName: smsQueue
+  queueUrl:
+    Fn::Sub: "https://sqs.${self:custom.customRegion}.${AWS::AccountId}/${self:custom.queueName}"
 
 provider:
   name: aws
-  runtime: nodejs14.x
-  region: us-east-1
-
+  runtime: nodejs16.x
+  region: *region  # Reference the custom region variable
+  memorySize: 512 # optional, in MB, default is 1024
+  tracing:
+    lambda: true # optional, enables tracing for all functions (can be true (true equals 'Active') 'Active' or 'PassThrough')
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - sns:Publish
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - sqs:SendMessage
+          Resource: "*" # Allow sending messages to any SQS queue
 functions:
   sendSms:
-    handler: dist/functions/sendSms.handler
+    handler: src/functions/sendSms.handler
     events:
-      - sns: arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:MySNSTopic
-
+      - http:
+          path: send-sms
+          method: POST
+    environment:
+      SQS_QUEUE_URL: ${self:custom.queueUrl}
+  processQueue:
+    handler: src/functions/processQueue.handler
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt: [SQSQueue, Arn]
 resources:
   Resources:
-    MySNSTopic:
-      Type: AWS::SNS::Topic
+    # SNSTopic:
+    #   Type: "AWS::SNS::Topic"
+    #   Properties:
+    #     DisplayName: "TheSMSTopic"
+    SQSQueue:
+      Type: "AWS::SQS::Queue"
       Properties:
-        DisplayName: "MySNSTopic"
+        QueueName: ${self:custom.queueName}
+        VisibilityTimeout: 300
+
+package:
+  # individually: true
+  patterns:
+    - "!**/*.spec.ts"
+    - "!**/*.test.ts"
+    - "!.github/**"
+    - "!coverage/**"
+
+plugins:
+  - serverless-webpack
